@@ -53,8 +53,9 @@ The default table, `0:100, 16:100`, changes nothing.
   horizontal expansion, so measure a print made with your normal settings.
 - **Range:** 90 to 110%.
 - **Also accepted:** spaces, `;` and `=`, so `0 = 100; 16 = 100.2%` works too.
-- **If the table can't be read:** nothing in the G-code changes. A `;TAPER_COMP ERROR` line explains why, and the
-  printer's screen shows `TaperComp table error` when the print starts.
+- **If the table can't be read:** nothing in the G-code changes, and Cura pops up an error that stays until you close
+  it, naming the table and the problem. The G-code also gets a `;TAPER_COMP ERROR` line, and the printer's screen
+  shows `TaperComp table error` when the print starts.
 
 ## Measuring your printer
 
@@ -149,6 +150,6 @@ Tested outside Cura on Cura 5.14 G-code of the 70.5 mm ring, 80 layers, with a d
 - Every line other than X and Y numbers stayed the same, apart from one comment per layer.
 - A table of all 100 left the file byte-for-byte unchanged.
 - A two-object file scaled each object about its own centre.
-- An unreadable table changed nothing and flagged the error.
+- An unreadable or empty table changed nothing, flagged the error and raised the popup. A good table raised none.
 
 Then it was run inside Cura 5.14 with the example 1 table on the same ring.

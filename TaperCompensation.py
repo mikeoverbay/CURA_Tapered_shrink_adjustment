@@ -16,14 +16,17 @@
 # Extrusion (E) is left alone. At 0.2-0.5 % the line width changes by about 0.001-0.002 mm.
 # Each layer gets a ";TAPER_COMP" comment with the scale used, so the result can be checked in the G-code.
 
+import html
 import re
 
 from ..Script import Script
 
 try:
     from UM.Logger import Logger
+    from UM.Message import Message
 except ImportError:  # running outside Cura (tests)
     Logger = None
+    Message = None
 
 _MOVE = re.compile(r"^\s*G0?[0-3](?![0-9])")       # G0..G3 (also G00..G03)
 _POS_MODE = re.compile(r"^\s*G9([01])(?![0-9])")    # G90 absolute / G91 relative
@@ -126,6 +129,16 @@ class _Tracker:
         return x0, y0, self.x, self.y, extruding
 
 
+def _popup(lines, error):
+    """A message in Cura's window that stays until it's closed (no-op outside Cura).
+    Cura shows message text as rich text, so lines are escaped and joined with <br>."""
+    if Message is None:
+        return
+    text = "<br>".join(html.escape(ln, quote=False) for ln in lines)
+    Message(text=text, title="Taper Compensation", lifetime=0,
+            message_type=Message.MessageType.ERROR if error else Message.MessageType.WARNING).show()
+
+
 def _layer_lines(chunk):
     """Split a layer chunk; yields (index, line, in_layer). Lines after ;TIME_ELAPSED are not layer moves."""
     in_layer = True
@@ -163,6 +176,10 @@ class TaperCompensation(Script):
             msg = "Taper Compensation not applied: " + str(err)
             if Logger is not None:
                 Logger.log("e", msg)
+            _popup(["This G-code has NO taper compensation.",
+                    "Table: " + (text.strip() or "(empty)"),
+                    "Problem: " + str(err),
+                    "Fix it in Extensions > Post Processing > Modify G-Code, then save again."], error=True)
             data[0] += ";TAPER_COMP ERROR " + msg + "\n"
             for i, chunk in enumerate(data):
                 if ";LAYER:" in chunk:
@@ -177,6 +194,8 @@ class TaperCompensation(Script):
 
         centres = self._object_centres(data)
         if not centres:
+            _popup(["This G-code has NO taper compensation: no objects were found in it "
+                    "(no ;MESH: sections), so there was nothing to scale."], error=False)
             data[0] += ";TAPER_COMP no objects found (no ;MESH: sections), nothing changed\n"
             return data
         single = next(iter(centres.values())) if len(centres) == 1 else None
